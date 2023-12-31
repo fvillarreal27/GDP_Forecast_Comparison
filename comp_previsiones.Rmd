@@ -1,0 +1,442 @@
+---
+output: html_document
+---
+
+
+<br/>
+**Banco Central del Ecuador** </br>
+**Dirección Nacional de Programación y Regulación Monetaria y Financiera** </br>
+
+**Contraste de previsiones** </br>
+Comparación de previsiones realizadas por el BCE con resultados de crecimiento observados.
+<br/>
+
+
+```{r, setup, include=FALSE}
+# Directorio
+dir <- 'D:/DNPRMF/Programacion Sector Real/Previsiones/Comparacion'
+
+knitr::opts_knit$set(root.dir = dir)
+setwd(dir)
+```
+
+```{r, echo=FALSE, results='hide', message=FALSE, warning=FALSE}
+# Librerias
+pacman::p_load(tidyverse, readxl, openxlsx, dplyr, ggplot2, ggfortify, foreign, 
+               timeDate, forecast, xts, urca, tseries, lubridate, stringi, 
+               stringr, reshape2, expsmooth, seasonal, Metrics)
+
+pacman::p_load(highcharter, kableExtra, gridExtra)
+pacman::p_load(downloadthis)
+
+# Colores
+paleta <- c('#1E4976', '#5FA3BF', '#BBBE64', '#EFCB68', '#E5825E', '#D05022')
+
+# Archivos
+fig_com <- 'Resultados/fig_com.RData'
+fig_ind <- 'Resultados/fig_ind.RData'
+fig_emoe <- 'Resultados/fig_emoe.RData'
+
+tabla_com <- 'Resultados/tabla_com.RData'
+tabla_ind <- 'Resultados/tabla_ind.RData'
+tabla_emoe <- 'Resultados/tabla_emoe.RData'
+
+notas_1 <- c('No se considera el 2020',
+           'Sobreestimación: Prev > Cierre + 0,1 p.p.',
+           'subestimación: Prev < Cierre - 0,1 p.p.')
+
+notas_2 <- c('Sobreestimación: Prev > Cierre + 0,1 p.p.',
+             'subestimación: Prev < Cierre - 0,1 p.p.')
+```
+
+```{r, echo=FALSE, results='hide', message=FALSE, warning=FALSE}
+# Figuras
+load(fig_com)
+load(fig_ind)
+load(fig_emoe)
+
+# Tabla CICN
+labels_ciiu1 <- data.frame(read_excel('Datos/correlacionador industria-codigo.xlsx',
+                                     sheet = 'Hoja1'))
+
+labels_ciiu2 <- labels_ciiu1[labels_ciiu1$`Código` %in% c('10','11','12','14','15','18'),]
+rownames(labels_ciiu2) <- NULL
+
+# Tablas metricas
+load(tabla_com)
+load(tabla_ind)
+load(tabla_emoe)
+
+kable(tabla_com[tabla_com$Componente == 'PIB', c(2:4)]) %>% 
+  kable_styling('striped', full_width = F, font_size = 12)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+# Descarga datos
+download_file(
+  path = 'Datos/Comparacion Crecimiento - Previsiones.xlsx',
+  output_name = 'Comparacion Crecimiento - Previsiones',
+  button_label = 'Descargar Excel',
+  button_type = 'primary',
+  has_icon = TRUE,
+  icon = 'fa fa-save',
+  self_contained = FALSE
+)
+```
+
+
+# {.tabset}
+
+## <span style="font-size:12px;font-weight:bold"> Componentes TOU </span> {.tabset}
+
+### <span style="font-size:12px"> PIB </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_com$PIB
+
+kable(tabla_com[tabla_com$Componente == 'PIB', c(2:5)],
+      align = c('l', 'c', 'c', 'c'), digits = c(0,2,2,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_1, notation = 'alphabet')
+```
+
+### <span style="font-size:12px"> Consumo Hogares </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_com$`Gasto de Consumo Final Hogares`
+
+kable(tabla_com[tabla_com$Componente == 'Gasto de Consumo Final Hogares', c(2:5)],
+      align = c('l', 'c', 'c', 'c'), digits = c(0,2,2,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_1, notation = 'alphabet')
+```
+
+### <span style="font-size:12px"> Consumo Gobierno </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_com$`Gasto de Consumo Final Gobierno General`
+
+kable(tabla_com[tabla_com$Componente == 'Gasto de Consumo Final Gobierno General', c(2:5)],
+      align = c('l', 'c', 'c', 'c'), digits = c(0,2,2,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_1, notation = 'alphabet')
+```
+
+### <span style="font-size:12px"> FBKF </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_com$FBKF
+
+kable(tabla_com[tabla_com$Componente == 'FBKF', c(2:5)],
+      align = c('l', 'c', 'c', 'c'), digits = c(0,2,2,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_1, notation = 'alphabet')
+```
+
+### <span style="font-size:12px"> Exportaciones </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_com$Exportaciones
+
+kable(tabla_com[tabla_com$Componente == 'Exportaciones', c(2:5)],
+      align = c('l', 'c', 'c', 'c'), digits = c(0,2,2,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_1, notation = 'alphabet')
+```
+
+### <span style="font-size:12px"> Importaciones </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_com$Importaciones
+
+kable(tabla_com[tabla_com$Componente == 'Importaciones', c(2:5)],
+      align = c('l', 'c', 'c', 'c'), digits = c(0,2,2,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_1, notation = 'alphabet')
+```
+
+
+
+## <span style="font-size:12px;font-weight:bold"> Industrias CICN </span> {.tabset}
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+# Tabla correlacionador codigos CICN
+kable(labels_ciiu1) %>%
+  kable_styling('striped', full_width = T, font_size = 12) %>%
+  scroll_box(width = '100%', height = '200px')
+```
+
+### <span style="font-size:12px"> 01 </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_ind$`Agricultura, ganadería, caza y silvicultura`
+
+kable(tabla_ind[tabla_ind$Industria == 'Agricultura, ganadería, caza y silvicultura', c(2:5)],
+      align = c('l', 'c', 'c', 'c'), digits = c(0,2,2,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_1, notation = 'alphabet')
+```
+
+### <span style="font-size:12px"> 02 </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_ind$`Acuicultura y pesca de camarón`
+
+kable(tabla_ind[tabla_ind$Industria == 'Acuicultura y pesca de camarón', c(2:5)],
+      align = c('l', 'c', 'c', 'c'), digits = c(0,2,2,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_1, notation = 'alphabet')
+```
+
+### <span style="font-size:12px"> 03 </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_ind$`Pesca (excepto de camarón)`
+
+kable(tabla_ind[tabla_ind$Industria == 'Pesca (excepto de camarón)', c(2:5)],
+      align = c('l', 'c', 'c', 'c'), digits = c(0,2,2,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_1, notation = 'alphabet')
+```
+
+### <span style="font-size:12px"> 04 </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_ind$`Petróleo y minas`
+
+kable(tabla_ind[tabla_ind$Industria == 'Petróleo y minas', c(2:5)],
+      align = c('l', 'c', 'c', 'c'), digits = c(0,2,2,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_1, notation = 'alphabet')
+```
+
+### <span style="font-size:12px"> 05 </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_ind$`Refinación de petróleo`
+
+kable(tabla_ind[tabla_ind$Industria == 'Refinación de petróleo', c(2:5)],
+      align = c('l', 'c', 'c', 'c'), digits = c(0,2,2,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_1, notation = 'alphabet')
+```
+
+### <span style="font-size:12px"> 06 </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_ind$`Manufactura (excepto refinación de petróleo)`
+
+kable(tabla_ind[tabla_ind$Industria == 'Manufactura (excepto refinación de petróleo)', c(2:5)],
+      align = c('l', 'c', 'c', 'c'), digits = c(0,2,2,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_1, notation = 'alphabet')
+```
+
+### <span style="font-size:12px"> 07 </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_ind$`Suministro de electricidad y agua`
+
+kable(tabla_ind[tabla_ind$Industria == 'Suministro de electricidad y agua', c(2:5)],
+      align = c('l', 'c', 'c', 'c'), digits = c(0,2,2,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_1, notation = 'alphabet')
+```
+
+### <span style="font-size:12px"> 08 </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_ind$Construcción
+
+kable(tabla_ind[tabla_ind$Industria == 'Construcción', c(2:5)],
+      align = c('l', 'c', 'c', 'c'), digits = c(0,2,2,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_1, notation = 'alphabet')
+```
+
+### <span style="font-size:12px"> 09 </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_ind$Comercio
+
+kable(tabla_ind[tabla_ind$Industria == 'Comercio', c(2:5)],
+      align = c('l', 'c', 'c', 'c'), digits = c(0,2,2,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_1, notation = 'alphabet')
+```
+
+### <span style="font-size:12px"> 10 </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_ind$`Alojamiento y servicios de comida`
+
+kable(tabla_ind[tabla_ind$Industria == 'Alojamiento y servicios de comida', c(2:5)],
+      align = c('l', 'c', 'c', 'c'), digits = c(0,2,2,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_1, notation = 'alphabet')
+```
+
+### <span style="font-size:12px"> 11 </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_ind$Transporte
+
+kable(tabla_ind[tabla_ind$Industria == 'Transporte', c(2:5)],
+      align = c('l', 'c', 'c', 'c'), digits = c(0,2,2,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_1, notation = 'alphabet')
+```
+
+### <span style="font-size:12px"> 12 </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_ind$`Correo y comunicaciones`
+
+kable(tabla_ind[tabla_ind$Industria == 'Correo y comunicaciones', c(2:5)],
+      align = c('l', 'c', 'c', 'c'), digits = c(0,2,2,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_1, notation = 'alphabet')
+```
+
+### <span style="font-size:12px"> 13 </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_ind$`Actividades de servicios financieros`
+
+kable(tabla_ind[tabla_ind$Industria == 'Actividades de servicios financieros', c(2:5)],
+      align = c('l', 'c', 'c', 'c'), digits = c(0,2,2,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_1, notation = 'alphabet')
+```
+
+### <span style="font-size:12px"> 14 </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_ind$`Actividades profesionales, técnicas y administrativas`
+
+kable(tabla_ind[tabla_ind$Industria == 'Actividades profesionales, técnicas y administrativas', c(2:5)],
+      align = c('l', 'c', 'c', 'c'), digits = c(0,2,2,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_1, notation = 'alphabet')
+```
+
+### <span style="font-size:12px"> 15 </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_ind$`Enseñanza y servicios sociales y de salud`
+
+kable(tabla_ind[tabla_ind$Industria == 'Enseñanza y servicios sociales y de salud', c(2:5)],
+      align = c('l', 'c', 'c', 'c'), digits = c(0,2,2,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_1, notation = 'alphabet')
+```
+
+### <span style="font-size:12px"> 16 </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_ind$`Administración pública, defensa; planes de seguridad social obligatoria`
+
+kable(tabla_ind[tabla_ind$Industria == 'Administración pública, defensa; planes de seguridad social obligatoria', c(2:5)],
+      align = c('l', 'c', 'c', 'c'), digits = c(0,2,2,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_1, notation = 'alphabet')
+```
+
+### <span style="font-size:12px"> 17 </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_ind$`Servicio doméstico`
+
+kable(tabla_ind[tabla_ind$Industria == 'Servicio doméstico', c(2:5)],
+      align = c('l', 'c', 'c', 'c'), digits = c(0,2,2,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_1, notation = 'alphabet')
+```
+
+### <span style="font-size:12px"> 18 </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_ind$`Otros servicios`
+
+kable(tabla_ind[tabla_ind$Industria == 'Otros servicios', c(2:5)],
+      align = c('l', 'c', 'c', 'c'), digits = c(0,2,2,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_1, notation = 'alphabet')
+```
+
+
+
+## <span style="font-size:12px;font-weight:bold"> EMOE </span> {.tabset}
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+# Tabla correlacionador codigos CICN
+kable(labels_ciiu2) %>%
+  kable_styling('striped', full_width = T, font_size = 12) %>%
+  scroll_box(width = '100%', height = '200px')
+```
+
+### <span style="font-size:12px"> Comercio </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_emoe$Comercio
+
+kable(tabla_emoe[tabla_emoe$Industria == 'Comercio', c(2:3)],
+      align = c('l', 'c'), digits = c(0,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_2, notation = 'alphabet')
+```
+
+### <span style="font-size:12px"> Construcción </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_emoe$Construcción
+
+kable(tabla_emoe[tabla_emoe$Industria == 'Construcción', c(2:3)],
+      align = c('l', 'c'), digits = c(0,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_2, notation = 'alphabet')
+```
+
+### <span style="font-size:12px"> Manufactura </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_emoe$Manufactura
+
+kable(tabla_emoe[tabla_emoe$Industria == 'Manufactura', c(2:3)],
+      align = c('l', 'c'), digits = c(0,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_2, notation = 'alphabet')
+```
+
+### <span style="font-size:12px"> 10 </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_emoe$`Alojamiento y servicios de comida`
+
+kable(tabla_emoe[tabla_emoe$Industria == 'Alojamiento y servicios de comida', c(2:3)],
+      align = c('l', 'c'), digits = c(0,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_2, notation = 'alphabet')
+```
+
+### <span style="font-size:12px"> 11 </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_emoe$Transporte
+
+kable(tabla_emoe[tabla_emoe$Industria == 'Transporte', c(2:3)],
+      align = c('l', 'c'), digits = c(0,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_2, notation = 'alphabet')
+```
+
+### <span style="font-size:12px"> 12 </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_emoe$`Correo y comunicaciones`
+
+kable(tabla_emoe[tabla_emoe$Industria == 'Correo y comunicaciones', c(2:3)],
+      align = c('l', 'c'), digits = c(0,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_2, notation = 'alphabet')
+```
+
+### <span style="font-size:12px"> 14 </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_emoe$`Actividades profesionales, técnicas y administrativas`
+
+kable(tabla_emoe[tabla_emoe$Industria == 'Actividades profesionales, técnicas y administrativas', c(2:3)],
+      align = c('l', 'c'), digits = c(0,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_2, notation = 'alphabet')
+```
+
+### <span style="font-size:12px"> 15 </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_emoe$`Enseñanza y servicios sociales y de salud`
+
+kable(tabla_emoe[tabla_emoe$Industria == 'Enseñanza y servicios sociales y de salud', c(2:3)],
+      align = c('l', 'c'), digits = c(0,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_2, notation = 'alphabet')
+```
+
+### <span style="font-size:12px"> 18 </span> 
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+fig_emoe$`Otros servicios`
+
+kable(tabla_emoe[tabla_emoe$Industria == 'Otros servicios', c(2:3)],
+      align = c('l', 'c'), digits = c(0,2)) %>% 
+  kable_styling('striped', full_width = F, font_size = 12, position = 'left') %>% 
+  add_footnote(notas_2, notation = 'alphabet')
+```
